@@ -36,7 +36,7 @@ npm run preview
 Build output is deployed on `JSCN-233`:
 
 ```text
-/var/www/NetAlert/frontend/dist/2026
+/srv/netops/netops-portal-web/dist
 ```
 
 The frontend calls the platform API through `/api/netops2026/*` and never connects to a database directly.
