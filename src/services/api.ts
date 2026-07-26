@@ -1,6 +1,6 @@
 import type { ApiResult, User } from "../types";
 
-const API_BASE = "/wx/api/netops2026";
+const API_BASE = "/api/netops2026";
 const TOKEN_KEY = "netops2026_token";
 
 export function getToken() {
@@ -20,7 +20,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export async function adminApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  return requestApi<T>(`/wx/api/admin${path}`, options);
+  return requestApi<T>(`/api/admin${path}`, options);
 }
 
 async function requestApi<T>(url: string, options: RequestInit = {}): Promise<T> {

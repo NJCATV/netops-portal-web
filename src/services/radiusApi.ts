@@ -78,7 +78,7 @@ export function loadRadiusIngestStatus() {
 }
 
 export async function downloadRadiusCsv(params: Record<string, string | number | undefined>) {
-  const response = await fetch(`/wx/api/netops2026/radius/export.csv?${query(params)}`, {
+  const response = await fetch(`/api/netops2026/radius/export.csv?${query(params)}`, {
     headers: { Authorization: `Bearer ${getToken()}` }
   });
   if (!response.ok) throw new Error(`导出失败 ${response.status}`);

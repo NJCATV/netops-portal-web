@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      "/wx/api": {
+      "/api": {
         target: "https://anbo.njcatv.net:5772",
         changeOrigin: true,
         secure: false

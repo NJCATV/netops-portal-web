@@ -39,4 +39,4 @@ Build output is deployed on `JSCN-233`:
 /var/www/NetAlert/frontend/dist/2026
 ```
 
-The frontend calls the platform API through `/wx/api/netops2026/*` and never connects to a database directly.
+The frontend calls the platform API through `/api/netops2026/*` and never connects to a database directly.
