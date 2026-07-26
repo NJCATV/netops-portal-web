@@ -47,7 +47,19 @@ let refreshTimer: number | undefined;
 const ranges = [{ label: "近 24 小时", value: 24 }, { label: "近 7 天", value: 168 }, { label: "近 30 天", value: 720 }];
 
 function number(value: unknown) { return Number(value || 0); }
-function formatCount(value: unknown) { return number(value).toLocaleString("zh-CN"); }
+function formatCount(value: unknown) {
+  const amount = number(value);
+  const abs = Math.abs(amount);
+  const compact = (scale: number, suffix: string) => {
+    const scaled = amount / scale;
+    const digits = Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2;
+    return `${scaled.toFixed(digits).replace(/\.?0+$/, "")}${suffix}`;
+  };
+  if (abs >= 1_000_000_000) return compact(1_000_000_000, "B");
+  if (abs >= 1_000_000) return compact(1_000_000, "M");
+  if (abs >= 1_000) return compact(1_000, "K");
+  return amount.toLocaleString("zh-CN");
+}
 function shortTime(value?: string | null) {
   if (!value) return "暂无数据";
   const date = new Date(value.replace(" ", "T"));

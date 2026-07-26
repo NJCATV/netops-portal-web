@@ -185,14 +185,14 @@ onMounted(() => {
       </article>
 
       <article class="card aiops-table-card radius-profile-detail">
-        <header class="radius-card-head">
+        <header class="radius-card-head radius-detail-head">
           <div><h2>关联明细</h2><p>会话、最近事件和账号-MAC 关系可交叉核对。</p></div>
-          <nav>
-            <button :class="{ active: activeDetail === 'sessions' }" @click="activeDetail = 'sessions'">会话</button>
-            <button :class="{ active: activeDetail === 'records' }" @click="activeDetail = 'records'">拨号 / 会话记录</button>
-            <button :class="{ active: activeDetail === 'relations' }" @click="activeDetail = 'relations'">终端关系</button>
-          </nav>
         </header>
+        <nav class="radius-detail-tabs" aria-label="关联明细类型">
+          <button :class="{ active: activeDetail === 'sessions' }" @click="activeDetail = 'sessions'"><span>01</span><strong>会话汇总</strong><em>{{ profile.sessions.length }} 条</em></button>
+          <button :class="{ active: activeDetail === 'records' }" @click="activeDetail = 'records'"><span>02</span><strong>拨号与会话记录</strong><em>{{ profile.records.length }} 条</em></button>
+          <button :class="{ active: activeDetail === 'relations' }" @click="activeDetail = 'relations'"><span>03</span><strong>账号与终端关系</strong><em>{{ profile.associations.length }} 条</em></button>
+        </nav>
         <div class="table-scroll">
           <table v-if="activeDetail === 'sessions'" class="data-table">
             <thead><tr><th>会话 / NAS</th><th>状态</th><th>终端 / IP</th><th>时长</th><th>上行 / 下行</th><th>最后活动</th></tr></thead>

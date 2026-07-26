@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { ArrowDownAZ, ArrowDownToLine, ArrowUpFromLine, DatabaseZap, RefreshCw, Search, Users } from "lucide-vue-next";
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, DatabaseZap, RefreshCw, Search, Users } from "lucide-vue-next";
 import RadiusModuleTabs from "../components/RadiusModuleTabs.vue";
 import RadiusTrendChart from "../components/RadiusTrendChart.vue";
 import { loadRadiusAccounting, type RadiusRow } from "../services/radiusApi";
@@ -10,12 +10,13 @@ const summary = ref<RadiusRow>({});
 const quality = ref<RadiusRow>({});
 const coverage = ref<RadiusRow>({});
 const traffic = ref<RadiusRow[]>([]);
-const users = ref<RadiusRow[]>([]);
+const anomalies = ref<RadiusRow[]>([]);
+const anomalyRules = ref<RadiusRow>({});
 const error = ref("");
-const keyword = ref("");
-const sortOrder = ref<"desc" | "asc">("desc");
-const page = ref(1);
-const pageSize = ref(30);
+const anomalyKeyword = ref("");
+const anomalySort = ref<"total" | "upload" | "ratio">("total");
+const anomalyPage = ref(1);
+const anomalyPageSize = ref(20);
 const bytes = (value: unknown) => {
   let n = Number(value || 0);
   for (const unit of ["B", "KB", "MB", "GB", "TB"]) {
@@ -30,15 +31,23 @@ const observedDuration = computed(() => {
   if (seconds < 3600) return `${Math.round(seconds / 60)} 分钟`;
   return `${(seconds / 3600).toFixed(1)} 小时`;
 });
-const filteredUsers = computed(() => {
-  const term = keyword.value.trim().toLowerCase();
-  const rows = term ? users.value.filter(row => String(row.username || "").toLowerCase().includes(term)) : users.value;
-  return [...rows].sort((a, b) => sortOrder.value === "desc"
-    ? Number(b.total_bytes || 0) - Number(a.total_bytes || 0)
-    : Number(a.total_bytes || 0) - Number(b.total_bytes || 0));
+const windowLabel = computed(() => hours.value === 1 ? "近 1 小时" : hours.value === 24 ? "近 24 小时" : hours.value === 168 ? "近 7 天" : "近 30 天");
+const filteredAnomalies = computed(() => {
+  const term = anomalyKeyword.value.trim().toLowerCase();
+  const rows = term ? anomalies.value.filter(row => String(row.username || "").toLowerCase().includes(term)) : anomalies.value;
+  const value = (row: RadiusRow) => anomalySort.value === "upload"
+    ? Number(row.input_bytes || 0)
+    : anomalySort.value === "ratio"
+      ? Number(row.upload_ratio || 0)
+      : Number(row.total_bytes || 0);
+  return [...rows].sort((a, b) => value(b) - value(a));
 });
-const pageCount = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value)));
-const visibleUsers = computed(() => filteredUsers.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value));
+const anomalyPageCount = computed(() => Math.max(1, Math.ceil(filteredAnomalies.value.length / anomalyPageSize.value)));
+const visibleAnomalies = computed(() => filteredAnomalies.value.slice((anomalyPage.value - 1) * anomalyPageSize.value, anomalyPage.value * anomalyPageSize.value));
+const anomalyReason = (row: RadiusRow) => [
+  Number(row.heavy_volume) ? "窗口总量偏高" : "",
+  Number(row.high_upload) ? "高上行结构" : "",
+].filter(Boolean);
 async function load() {
   error.value = "";
   try {
@@ -47,8 +56,9 @@ async function load() {
     quality.value = data.quality || {};
     coverage.value = data.coverage || {};
     traffic.value = data.traffic;
-    users.value = data.top_users;
-    page.value = 1;
+    anomalies.value = data.anomalies || [];
+    anomalyRules.value = data.anomaly_rules || {};
+    anomalyPage.value = 1;
   } catch (err) { error.value = err instanceof Error ? err.message : "加载失败"; }
 }
 function setHours(value: number) { hours.value = value; load(); }
@@ -72,10 +82,17 @@ onMounted(load);
       <article><span class="aiops-kpi-icon"><DatabaseZap /></span><div><em>有效增量记录</em><strong>{{ Number(quality.delta_records || 0).toLocaleString() }}</strong><small>回退 {{ quality.rollback_records || 0 }} 次</small></div></article>
     </section>
     <article class="card radius-chart-card"><header><div><h2>动态流量趋势</h2><p>10 分钟粒度；鼠标悬停可查看每个时间段的上、下行增量。</p></div></header><RadiusTrendChart :points="traffic" kind="traffic" /></article>
-    <article class="card aiops-table-card radius-data-table-card">
-      <header class="radius-card-head"><div><h2>GDF 窗口流量排行</h2><p>仅展示当前窗口的总增量；可检索、排序、分页，并进入一键查询核对拨号记录。</p></div><label class="radius-inline-search"><Search :size="15" /><input v-model="keyword" placeholder="筛选 GDF 账号" @input="page = 1" /></label></header>
-      <div class="table-scroll"><table class="data-table"><thead><tr><th>账号</th><th>上行</th><th>下行</th><th>总流量</th><th>会话</th><th>上下载比</th><th>回退</th></tr></thead><tbody><tr v-for="row in visibleUsers" :key="String(row.username)"><td><RouterLink class="radius-account-link" :to="{ path: '/radius', query: { keyword: row.username } }">{{ row.username }}</RouterLink></td><td>{{ bytes(row.input_bytes) }}</td><td>{{ bytes(row.output_bytes) }}</td><td><strong>{{ bytes(row.total_bytes) }}</strong></td><td>{{ row.sessions }}</td><td>{{ row.upload_ratio }}</td><td>{{ row.rollbacks }}</td></tr><tr v-if="!visibleUsers.length"><td colspan="7" class="radius-empty">当前筛选没有账号流量记录</td></tr></tbody></table></div>
-      <footer class="radius-pager"><span>已加载前 {{ users.length }} 条，匹配 {{ filteredUsers.length }} 条</span><button class="btn btn-secondary" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'"><ArrowDownAZ :size="14" />{{ sortOrder === "desc" ? "流量从高到低" : "流量从低到高" }}</button><select v-model="pageSize" @change="page = 1"><option :value="20">20 条/页</option><option :value="30">30 条/页</option><option :value="50">50 条/页</option></select><button class="btn btn-secondary" :disabled="page <= 1" @click="page--">上一页</button><b>{{ page }} / {{ pageCount }}</b><button class="btn btn-secondary" :disabled="page >= pageCount" @click="page++">下一页</button></footer>
+    <article class="card aiops-table-card radius-anomaly-card">
+      <header class="radius-card-head radius-anomaly-head">
+        <div><h2><AlertTriangle :size="18" /> 异常流量账号 <em>{{ anomalies.length }}</em></h2><p>{{ windowLabel }}内的全部规则命中账号，不是流量前 100。当前阈值：总流量 ≥ {{ bytes(anomalyRules.heavy_volume_bytes) }}，或上行 ≥ {{ bytes(anomalyRules.upload_bytes) }} 且上/下行比 ≥ {{ anomalyRules.upload_ratio || 4 }}。阈值会随所选窗口同比例调整。</p></div>
+      </header>
+      <div class="radius-anomaly-toolbar">
+        <label><Search :size="15" /><input v-model="anomalyKeyword" placeholder="搜索 GDF 账号" @input="anomalyPage = 1" /></label>
+        <select v-model="anomalySort" @change="anomalyPage = 1"><option value="total">按窗口总流量排序</option><option value="upload">按上行流量排序</option><option value="ratio">按上/下行比排序</option></select>
+        <span>匹配 {{ filteredAnomalies.length }} 个异常账号</span>
+      </div>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>账号</th><th>窗口上行</th><th>窗口下行</th><th>窗口总量</th><th>上/下行比</th><th>会话</th><th>命中规则</th><th>最后活动</th></tr></thead><tbody><tr v-for="row in visibleAnomalies" :key="String(row.username)"><td><RouterLink class="radius-account-link" :to="{ path: '/radius', query: { keyword: row.username } }">{{ row.username }}</RouterLink></td><td>{{ bytes(row.input_bytes) }}</td><td>{{ bytes(row.output_bytes) }}</td><td><strong>{{ bytes(row.total_bytes) }}</strong></td><td>{{ row.upload_ratio }}</td><td>{{ row.sessions }}</td><td><span class="radius-anomaly-tags"><i v-for="reason in anomalyReason(row)" :key="reason">{{ reason }}</i></span></td><td>{{ row.last_seen }}</td></tr><tr v-if="!visibleAnomalies.length"><td colspan="8" class="radius-empty">当前窗口没有账号命中流量异常规则</td></tr></tbody></table></div>
+      <footer class="radius-pager"><span>第 {{ anomalyPage }} / {{ anomalyPageCount }} 页</span><select v-model="anomalyPageSize" @change="anomalyPage = 1"><option :value="20">20 条/页</option><option :value="50">50 条/页</option><option :value="100">100 条/页</option></select><button class="btn btn-secondary" :disabled="anomalyPage <= 1" @click="anomalyPage--">上一页</button><button class="btn btn-secondary" :disabled="anomalyPage >= anomalyPageCount" @click="anomalyPage++">下一页</button></footer>
     </article>
   </div>
 </template>

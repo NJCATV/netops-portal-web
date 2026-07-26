@@ -26,6 +26,7 @@ export function loadRadiusAnalytics(hours = 24) {
   return radiusApi<{
     reasons: RadiusRow[]; nas: RadiusRow[]; reconnects: RadiusRow[];
     traffic_patterns: RadiusRow[]; online_sessions: RadiusRow[];
+    traffic_rules?: RadiusRow;
     terminate_causes: RadiusRow[]; nas_restarts: RadiusRow[];
     control_events: RadiusRow[]; protocol_quality: RadiusRow; hours: number;
     terminal_sharing: RadiusRow[]; ip_conflicts: RadiusRow[];
@@ -36,12 +37,12 @@ export function loadRadiusRejectRisk(hours = 24, limit = 500) {
   return radiusApi<{ items: RadiusRow[] }>(`/risk/reject?hours=${hours}&limit=${limit}`);
 }
 
-export function loadRadiusMultiMac(hours = 24, minMacs = 2, limit = 500) {
-  return radiusApi<{ items: RadiusRow[] }>(`/risk/multi-mac?hours=${hours}&min_macs=${minMacs}&limit=${limit}`);
+export function loadRadiusMultiMac(hours = 24, minMacs = 2) {
+  return radiusApi<{ items: RadiusRow[]; hours: number; min_macs: number }>(`/risk/multi-mac?hours=${hours}&min_macs=${minMacs}`);
 }
 
 export function loadRadiusAccounting(hours = 24) {
-  return radiusApi<{ summary: RadiusRow; traffic: RadiusRow[]; top_users: RadiusRow[]; quality: RadiusRow; terminate_causes: RadiusRow[]; coverage?: RadiusRow; hours: number }>(`/accounting?hours=${hours}`);
+  return radiusApi<{ summary: RadiusRow; traffic: RadiusRow[]; quality: RadiusRow; coverage?: RadiusRow; anomalies: RadiusRow[]; anomaly_rules: RadiusRow; hours: number }>(`/accounting?hours=${hours}`);
 }
 
 export type RadiusProfile = {
