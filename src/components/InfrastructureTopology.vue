@@ -88,6 +88,6 @@ function selectNode(id: string) {
     <div v-if="selected" class="infra-topology-detail topology-v2-detail" :class="tone(selected.status)">
       <span class="infra-topology-detail-icon"><ArrowDownUp :size="18"/></span><div><strong>{{ selected.direction }} · {{ selected.protocol }} / {{ selected.ports }}</strong><p>{{ selected.description }}</p></div><span class="infra-firewall"><ShieldCheck :size="15"/>{{ selected.firewall }}</span><span class="infra-link-status" :class="tone(selected.status)">{{ label(selected.status) }}<ChevronRight :size="14"/></span>
     </div>
-    <div class="topology-v2-security"><ShieldCheck :size="15"/><span><strong>已纳入安全基线：</strong>20、213、236 已配置 SSH Fail2ban；20/213 使用端口守卫。具体允许来源和例外以部署仓库中的安全清单为准。</span><CircleAlert :size="14"/></div>
+    <div class="topology-v2-security"><ShieldCheck :size="15"/><span><strong>已纳入安全基线：</strong>20、212、213、236 已配置 SSH Fail2ban；20、212、213 使用端口守卫。具体允许来源和例外以部署仓库中的安全清单为准。</span><CircleAlert :size="14"/></div>
   </section>
 </template>
