@@ -25,6 +25,15 @@ const bytes = (value: unknown) => {
   }
   return `${n.toFixed(1)} PB`;
 };
+const totalBytes = computed(() => Number(summary.value.input_bytes || 0) + Number(summary.value.output_bytes || 0));
+const averageRate = computed(() => {
+  const seconds = Number(coverage.value.observed_seconds || 0);
+  if (!seconds) return "-";
+  const bitsPerSecond = totalBytes.value * 8 / seconds;
+  if (bitsPerSecond >= 1024 ** 3) return `${(bitsPerSecond / 1024 ** 3).toFixed(1)} Gbit/s`;
+  if (bitsPerSecond >= 1024 ** 2) return `${(bitsPerSecond / 1024 ** 2).toFixed(1)} Mbit/s`;
+  return `${Math.round(bitsPerSecond / 1024)} Kbit/s`;
+});
 const observedDuration = computed(() => {
   const seconds = Number(coverage.value.observed_seconds || 0);
   if (seconds < 60) return "不足 1 分钟";
@@ -68,23 +77,23 @@ onMounted(load);
 <template>
   <div class="aiops-page radius-page">
     <section class="aiops-page-head">
-      <div><span><ArrowDownToLine :size="15" /> Radius Accounting</span><h1>当前窗口的全网会话流量</h1><p>这里的上、下行是所选窗口内相邻 Accounting 快照的真实增量汇总，不是每户的累计计数器，也不是瞬时速率。</p></div>
+      <div><span><ArrowDownToLine :size="15" /> Radius Accounting</span><h1>全网 Accounting 流量（窗口累计）</h1><p>上方是所选时间内的全网累计流量；下方图表是每 10 分钟的流量增量。两者来自同一批 Accounting 数据，图中每个时间点相加即为上方累计量。</p></div>
       <div class="aiops-range"><button v-for="value in [1, 24, 168, 720]" :key="value" :class="{ active: hours === value }" @click="setHours(value)">{{ value === 168 ? "7 天" : value === 720 ? "30 天" : `${value}h` }}</button></div>
       <button class="btn btn-secondary" @click="load"><RefreshCw :size="15" />刷新</button>
     </section>
     <RadiusModuleTabs />
     <div v-if="error" class="aiops-notice error">{{ error }}</div>
-    <div class="radius-accounting-note"><DatabaseZap :size="17" /><div><strong>当前统计覆盖 {{ observedDuration }}</strong><p>选定窗口：最近 {{ hours === 168 ? "7 天" : hours === 720 ? "30 天" : `${hours} 小时` }}；实际数据：{{ coverage.first_event_time || "-" }} 至 {{ coverage.last_event_time || "-" }}。采集启动前没有历史数据时，较大窗口不会虚构历史流量。</p></div></div>
+    <div class="radius-accounting-note"><DatabaseZap :size="17" /><div><strong>当前统计覆盖 {{ observedDuration }} · 平均总速率 {{ averageRate }}</strong><p>选定窗口：最近 {{ hours === 168 ? "7 天" : hours === 720 ? "30 天" : `${hours} 小时` }}；实际数据：{{ coverage.first_event_time || "-" }} 至 {{ coverage.last_event_time || "-" }}。首尾不足 10 分钟的图表点为不完整时间桶，数值偏低不代表流量骤降。</p></div></div>
     <section class="aiops-kpis aiops-kpis-compact">
-      <article><span class="aiops-kpi-icon"><ArrowUpFromLine /></span><div><em>窗口上行总量</em><strong>{{ bytes(summary.input_bytes) }}</strong><small>全部 GDF 有效增量之和</small></div></article>
-      <article><span class="aiops-kpi-icon green"><ArrowDownToLine /></span><div><em>窗口下行总量</em><strong>{{ bytes(summary.output_bytes) }}</strong><small>全部 GDF 有效增量之和</small></div></article>
-      <article><span class="aiops-kpi-icon amber"><Users /></span><div><em>账号 / 会话</em><strong>{{ Number(summary.users || 0).toLocaleString() }}</strong><small>{{ Number(summary.sessions || 0).toLocaleString() }} 个会话</small></div></article>
-      <article><span class="aiops-kpi-icon"><DatabaseZap /></span><div><em>有效增量记录</em><strong>{{ Number(quality.delta_records || 0).toLocaleString() }}</strong><small>回退 {{ quality.rollback_records || 0 }} 次</small></div></article>
+      <article><span class="aiops-kpi-icon"><ArrowUpFromLine /></span><div><em>统计窗口累计上行</em><strong>{{ bytes(summary.input_bytes) }}</strong><small>所有账号相邻快照增量之和 · 非实时速率</small></div></article>
+      <article><span class="aiops-kpi-icon green"><ArrowDownToLine /></span><div><em>统计窗口累计下行</em><strong>{{ bytes(summary.output_bytes) }}</strong><small>所有账号相邻快照增量之和 · 非实时速率</small></div></article>
+      <article><span class="aiops-kpi-icon amber"><Users /></span><div><em>去重账号 / 计费会话</em><strong>{{ Number(summary.users || 0).toLocaleString() }}</strong><small>{{ Number(summary.sessions || 0).toLocaleString() }} 个会话 · 非当前在线数</small></div></article>
+      <article><span class="aiops-kpi-icon"><DatabaseZap /></span><div><em>可计算快照增量</em><strong>{{ Number(quality.delta_records || 0).toLocaleString() }}</strong><small>同会话相邻计数器差值 · 回退 {{ quality.rollback_records || 0 }} 次</small></div></article>
     </section>
-    <article class="card radius-chart-card"><header><div><h2>动态流量趋势</h2><p>10 分钟粒度；鼠标悬停可查看每个时间段的上、下行增量。</p></div></header><RadiusTrendChart :points="traffic" kind="traffic" /></article>
+    <article class="card radius-chart-card"><header><div><h2>10 分钟全网流量增量（非累计、非实时速率）</h2><p>每个点代表该 10 分钟内全部账号的相邻快照增量之和；纵轴以 GB/TB 显示。鼠标悬停可查看上、下行及该时间桶合计。</p></div></header><RadiusTrendChart :points="traffic" kind="traffic" /></article>
     <article class="card aiops-table-card radius-anomaly-card">
       <header class="radius-card-head radius-anomaly-head">
-        <div><h2><AlertTriangle :size="18" /> 异常流量账号 <em>{{ anomalies.length }}</em></h2><p>{{ windowLabel }}内的全部规则命中账号，不是流量前 100。当前阈值：总流量 ≥ {{ bytes(anomalyRules.heavy_volume_bytes) }}，或上行 ≥ {{ bytes(anomalyRules.upload_bytes) }} 且上/下行比 ≥ {{ anomalyRules.upload_ratio || 4 }}。阈值会随所选窗口同比例调整。</p></div>
+        <div><h2><AlertTriangle :size="18" /> 异常流量账号 <em>{{ anomalies.length }}</em></h2><p>{{ windowLabel }}内满足流量巡检条件的账号。当前阈值：总流量 ≥ {{ bytes(anomalyRules.heavy_volume_bytes) }}，或上行 ≥ {{ bytes(anomalyRules.upload_bytes) }} 且上/下行比 ≥ {{ anomalyRules.upload_ratio || 4 }}；阈值随所选窗口同比例调整。</p></div>
       </header>
       <div class="radius-anomaly-toolbar">
         <label><Search :size="15" /><input v-model="anomalyKeyword" placeholder="搜索 GDF 账号" @input="anomalyPage = 1" /></label>
