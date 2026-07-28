@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { Activity, BarChart3, Power, RefreshCw, RotateCcw, TrendingUp } from "lucide-vue-next";
 import RadiusModuleTabs from "../components/RadiusModuleTabs.vue";
 import RadiusBarChart from "../components/RadiusBarChart.vue";
@@ -63,6 +63,20 @@ function applyData(data: Awaited<ReturnType<typeof loadRadiusAnalytics>>) {
   ipConflicts.value = data.ip_conflicts || [];
   sessionSummary.value = data.summary || {};
 }
+function resetData() {
+  reasons.value = [];
+  nas.value = [];
+  reconnects.value = [];
+  traffic.value = [];
+  trafficRules.value = {};
+  online.value = [];
+  terminates.value = [];
+  controls.value = [];
+  protocolQuality.value = {};
+  terminalSharing.value = [];
+  ipConflicts.value = [];
+  sessionSummary.value = {};
+}
 async function load(quiet = false) {
   if (!quiet) loading.value = true;
   error.value = "";
@@ -73,16 +87,23 @@ async function load(quiet = false) {
     error.value = err instanceof Error ? err.message : "加载失败";
   } finally { loading.value = false; }
 }
-onMounted(() => {
+function loadCurrentSection() {
   const cached = readApiSnapshot<Awaited<ReturnType<typeof loadRadiusAnalytics>>>(
     `radius:analytics:${props.section}:${hours.value}`,
   );
   if (cached) {
     applyData(cached);
     loading.value = false;
+  } else {
+    resetData();
   }
   void load(Boolean(cached));
-});
+}
+onMounted(loadCurrentSection);
+// Both routes render this same component. Vue reuses the component instance
+// when an operator switches tabs, so onMounted alone leaves the new section
+// showing empty refs until a full browser refresh.
+watch(() => props.section, loadCurrentSection);
 </script>
 
 <template>
