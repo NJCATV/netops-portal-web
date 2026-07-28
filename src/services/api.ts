@@ -2,6 +2,8 @@ import type { ApiResult, User } from "../types";
 
 const API_BASE = "/api/netops2026";
 const TOKEN_KEY = "netops2026_token";
+const SNAPSHOT_PREFIX = "netops2026_snapshot";
+const inflight = new Map<string, Promise<unknown>>();
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
@@ -13,6 +15,65 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+function tokenScope() {
+  let hash = 2166136261;
+  for (const char of getToken()) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function snapshotKey(name: string) {
+  return `${SNAPSHOT_PREFIX}:${tokenScope()}:${name}`;
+}
+
+export function readApiSnapshot<T>(name: string, storage: Storage = localStorage): T | null {
+  try {
+    const raw = storage.getItem(snapshotKey(name));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { data?: T };
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeApiSnapshot<T>(name: string, data: T, storage: Storage = localStorage) {
+  try {
+    storage.setItem(snapshotKey(name), JSON.stringify({ saved_at: Date.now(), data }));
+  } catch {
+    // Storage quota or privacy mode must never block the live API response.
+  }
+}
+
+export function snapshotApi<T>(path: string, name: string, storage: Storage = localStorage): Promise<T> {
+  const key = `${tokenScope()}:${path}`;
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const pending = api<T>(path)
+    .then(data => {
+      writeApiSnapshot(name, data, storage);
+      return data;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, pending);
+  return pending;
+}
+
+export function prewarmOperationsPages() {
+  if (!getToken()) return;
+  void snapshotApi("/dashboard?hours=24", "dashboard:24").catch(() => undefined);
+  void snapshotApi("/radius/analytics?hours=24&section=auth", "radius:analytics:auth:24").catch(() => undefined);
+  void snapshotApi("/radius/analytics?hours=24&section=session", "radius:analytics:session:24").catch(() => undefined);
+  void snapshotApi("/radius/accounting?hours=24", "radius:accounting:24").catch(() => undefined);
+  void snapshotApi(
+    "/radius/records?event_type=auth&page=1&page_size=50&sort_by=event_time&sort_order=desc&hours=24",
+    "radius:records:auth:default",
+    sessionStorage,
+  ).catch(() => undefined);
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

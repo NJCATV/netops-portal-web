@@ -1,4 +1,4 @@
-import { api, getToken } from "./api";
+import { api, getToken, snapshotApi } from "./api";
 
 export type RadiusRow = Record<string, string | number | null | undefined>;
 
@@ -22,15 +22,16 @@ export function loadRadiusRecords(params: Record<string, string | number | undef
   return radiusApi<{ items: RadiusRow[]; total: number; page: number; page_size: number; observed?: RadiusRow; window?: RadiusRow; sort_by?: string; sort_order?: string }>(`/records?${query(params)}`);
 }
 
-export function loadRadiusAnalytics(hours = 24) {
-  return radiusApi<{
+export function loadRadiusAnalytics(hours = 24, section: "auth" | "session" = "auth") {
+  return snapshotApi<{
+    section?: string; summary?: RadiusRow;
     reasons: RadiusRow[]; nas: RadiusRow[]; reconnects: RadiusRow[];
     traffic_patterns: RadiusRow[]; online_sessions: RadiusRow[];
     traffic_rules?: RadiusRow;
-    terminate_causes: RadiusRow[]; nas_restarts: RadiusRow[];
+    terminate_causes: RadiusRow[]; nas_restarts?: RadiusRow[];
     control_events: RadiusRow[]; protocol_quality: RadiusRow; hours: number;
     terminal_sharing: RadiusRow[]; ip_conflicts: RadiusRow[];
-  }>(`/analytics?hours=${hours}`);
+  }>(`/radius/analytics?hours=${hours}&section=${section}`, `radius:analytics:${section}:${hours}`);
 }
 
 export function loadRadiusRejectRisk(hours = 24, limit = 500) {
@@ -42,7 +43,10 @@ export function loadRadiusMultiMac(hours = 24, minMacs = 2) {
 }
 
 export function loadRadiusAccounting(hours = 24) {
-  return radiusApi<{ summary: RadiusRow; traffic: RadiusRow[]; quality: RadiusRow; coverage?: RadiusRow; anomalies: RadiusRow[]; anomaly_rules: RadiusRow; hours: number }>(`/accounting?hours=${hours}`);
+  return snapshotApi<{ summary: RadiusRow; traffic: RadiusRow[]; quality: RadiusRow; coverage?: RadiusRow; anomalies: RadiusRow[]; anomaly_rules: RadiusRow; hours: number }>(
+    `/radius/accounting?hours=${hours}`,
+    `radius:accounting:${hours}`,
+  );
 }
 
 export type RadiusProfile = {

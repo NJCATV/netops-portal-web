@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { ArrowDownAZ, Download, RefreshCw, Search } from "lucide-vue-next";
 import RadiusModuleTabs from "../components/RadiusModuleTabs.vue";
+import { readApiSnapshot, writeApiSnapshot } from "../services/api";
 import { downloadRadiusCsv, loadRadiusRecords, type RadiusRow } from "../services/radiusApi";
 
 const eventType = ref<"auth" | "accounting" | "control">("auth");
@@ -30,9 +31,21 @@ const rangeLabel = computed(() => {
   const last = String(observed.value.last_event_time || "");
   return first && last ? `实际命中：${first} 至 ${last}` : "当前条件下暂无记录";
 });
+type RecordsResult = Awaited<ReturnType<typeof loadRadiusRecords>>;
+function applyData(data: RecordsResult) {
+  items.value = data.items;
+  total.value = Number(data.total);
+  observed.value = data.observed || {};
+  windowInfo.value = data.window || {};
+}
+function isDefaultQuery() {
+  return eventType.value === "auth" && !keyword.value && !result.value
+    && page.value === 1 && pageSize.value === 50
+    && sortBy.value === "event_time" && sortOrder.value === "desc";
+}
 
-async function load() {
-  loading.value = true;
+async function load(quiet = false) {
+  if (!quiet) loading.value = true;
   error.value = "";
   try {
     const data = await loadRadiusRecords({
@@ -42,10 +55,8 @@ async function load() {
       sort_by: sortBy.value, sort_order: sortOrder.value,
       page: page.value, page_size: pageSize.value
     });
-    items.value = data.items;
-    total.value = Number(data.total);
-    observed.value = data.observed || {};
-    windowInfo.value = data.window || {};
+    applyData(data);
+    if (isDefaultQuery()) writeApiSnapshot("radius:records:auth:default", data, sessionStorage);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "加载失败";
   } finally {
@@ -69,7 +80,14 @@ async function exportCsv() {
   await downloadRadiusCsv({ event_type: eventType.value, keyword: keyword.value,
     result: eventType.value === "auth" ? result.value : "", start_time: startTime.value, end_time: endTime.value });
 }
-onMounted(load);
+onMounted(() => {
+  const cached = readApiSnapshot<RecordsResult>("radius:records:auth:default", sessionStorage);
+  if (cached) {
+    applyData(cached);
+    loading.value = false;
+  }
+  void load(Boolean(cached));
+});
 </script>
 
 <template>

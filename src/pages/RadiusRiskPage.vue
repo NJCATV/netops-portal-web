@@ -44,6 +44,7 @@ onMounted(load);
   <div class="aiops-page radius-page" :class="{ loading }">
     <section class="aiops-page-head"><div><span><ShieldAlert :size="15" /> Radius 风险分析</span><h1>{{ isMulti ? "多终端拨号账号" : "高频认证拒绝" }}</h1><p>{{ isMulti ? "仅使用成功认证和 Accounting 建立可信关系；展示所选时间内符合条件的全部账号，MAC 以独立标签展示。" : "识别密码错误、无订购、账号异常等持续拒绝账号，并可按账号、原因或 MAC 筛选。" }}</p></div><div class="radius-risk-window-picker"><small>分析时间</small><div class="aiops-range"><button v-for="value in [1,24,168,720]" :key="value" :class="{ active: hours === value }" @click="setHours(value)">{{ value === 1 ? "近 1 小时" : value === 24 ? "近 24 小时" : value === 168 ? "近 7 天" : "近 30 天" }}</button></div></div><button class="btn btn-secondary" @click="load"><RefreshCw :size="15" />刷新</button></section>
     <RadiusModuleTabs />
+    <div v-if="loading" class="aiops-notice">正在读取多终端关联快照…</div>
     <section v-if="isMulti" class="card radius-risk-scope">
       <div><Clock3 :size="17" /><span>当前统计窗口</span><strong>{{ windowLabel }}</strong></div>
       <p>判定标准：同一 GDF 账号在该窗口内关联至少 {{ minMacs }} 个不同拨号终端 MAC；只采信 Access-Accept 与 Accounting，不把认证拒绝尝试算作终端关系。</p>

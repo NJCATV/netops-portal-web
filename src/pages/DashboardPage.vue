@@ -7,7 +7,7 @@ import {
   UsersRound, Wifi, Zap
 } from "lucide-vue-next";
 import EmptyState from "../components/EmptyState.vue";
-import { api } from "../services/api";
+import { api, readApiSnapshot, writeApiSnapshot } from "../services/api";
 import { aiopsApi, loadAiopsOverview, type AiopsOverview } from "../services/aiopsApi";
 import { loadRadiusIngestStatus, loadRadiusOverview, loadRadiusRejectRisk, type RadiusRow } from "../services/radiusApi";
 
@@ -141,9 +141,11 @@ async function loadDashboard(quiet = false) {
   else loading.value = true;
   loadError.value = "";
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 15000);
+  const timeout = window.setTimeout(() => controller.abort(), 45000);
   try {
-    data.value = normalizeDashboard(await api<Partial<Dashboard>>(`/dashboard?hours=${hours.value}`, { signal: controller.signal }));
+    const response = await api<Partial<Dashboard>>(`/dashboard?hours=${hours.value}`, { signal: controller.signal });
+    writeApiSnapshot(`dashboard:${hours.value}`, response);
+    data.value = normalizeDashboard(response);
   } catch (error) {
     loadError.value = error instanceof DOMException && error.name === "AbortError"
       ? "驾驶舱数据加载超时，请稍后重试"
@@ -189,10 +191,15 @@ function selectRange(value: number) { if (hours.value !== value) { hours.value =
 function navigate(path: string) { router.push(path); }
 
 onMounted(async () => {
+  const cached = readApiSnapshot<Partial<Dashboard>>(`dashboard:${hours.value}`);
+  if (cached) {
+    data.value = normalizeDashboard(cached);
+    loading.value = false;
+  }
   void markPresence(true);
   void loadAiopsSummary();
   void loadRadiusSummary();
-  await loadDashboard();
+  await loadDashboard(Boolean(cached));
   refreshTimer = window.setInterval(async () => { await markPresence(false); void loadAiopsSummary(); void loadRadiusSummary(); loadDashboard(true); }, 60000);
 });
 onBeforeUnmount(() => { if (refreshTimer) window.clearInterval(refreshTimer); });

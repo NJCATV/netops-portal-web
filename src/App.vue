@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import AppLayout from "./components/AppLayout.vue";
 import InitialPasswordDialog from "./components/InitialPasswordDialog.vue";
 import LoginPage from "./pages/LoginPage.vue";
-import { clearToken, getToken, me } from "./services/api";
+import { clearToken, getToken, me, prewarmOperationsPages } from "./services/api";
 import type { User } from "./types";
 
 const router = useRouter();
@@ -30,6 +30,7 @@ async function loadUser() {
     user.value = "user" in data ? data.user : data;
     authenticated.value = true;
     showInitialPassword.value = user.value?.password_status === "initial";
+    prewarmOperationsPages();
   } catch {
     clearToken();
     authenticated.value = false;
@@ -42,6 +43,7 @@ function handleLoggedIn(nextUser?: User) {
   user.value = nextUser || null;
   authenticated.value = true;
   showInitialPassword.value = nextUser?.password_status === "initial";
+  prewarmOperationsPages();
   router.replace("/dashboard");
 }
 
