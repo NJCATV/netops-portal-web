@@ -31,7 +31,7 @@ export function loadRadiusAnalytics(hours = 24, section: "auth" | "session" = "a
     terminate_causes: RadiusRow[]; nas_restarts?: RadiusRow[];
     control_events: RadiusRow[]; protocol_quality: RadiusRow; hours: number;
     terminal_sharing: RadiusRow[]; ip_conflicts: RadiusRow[];
-  }>(`/radius/analytics?hours=${hours}&section=${section}`, `radius:analytics:${section}:${hours}`);
+  }>(`/radius/analytics?hours=${hours}&section=${section}`, `radius:analytics:v2:${section}:${hours}`);
 }
 
 export function loadRadiusRejectRisk(hours = 24, limit = 500) {

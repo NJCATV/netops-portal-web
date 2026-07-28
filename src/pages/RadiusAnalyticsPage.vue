@@ -89,7 +89,7 @@ async function load(quiet = false) {
 }
 function loadCurrentSection() {
   const cached = readApiSnapshot<Awaited<ReturnType<typeof loadRadiusAnalytics>>>(
-    `radius:analytics:${props.section}:${hours.value}`,
+    `radius:analytics:v2:${props.section}:${hours.value}`,
   );
   if (cached) {
     applyData(cached);

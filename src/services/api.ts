@@ -66,8 +66,8 @@ export function snapshotApi<T>(path: string, name: string, storage: Storage = lo
 export function prewarmOperationsPages() {
   if (!getToken()) return;
   void snapshotApi("/dashboard?hours=24", "dashboard:24").catch(() => undefined);
-  void snapshotApi("/radius/analytics?hours=24&section=auth", "radius:analytics:auth:24").catch(() => undefined);
-  void snapshotApi("/radius/analytics?hours=24&section=session", "radius:analytics:session:24").catch(() => undefined);
+  void snapshotApi("/radius/analytics?hours=24&section=auth", "radius:analytics:v2:auth:24").catch(() => undefined);
+  void snapshotApi("/radius/analytics?hours=24&section=session", "radius:analytics:v2:session:24").catch(() => undefined);
   void snapshotApi("/radius/accounting?hours=24", "radius:accounting:24").catch(() => undefined);
   void snapshotApi(
     "/radius/records?event_type=auth&page=1&page_size=50&sort_by=event_time&sort_order=desc&hours=24",
@@ -81,7 +81,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export async function adminApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  return requestApi<T>(`/api/admin${path}`, options);
+  // Keep the current platform under its own public namespace. The preserved
+  // /2025 application still owns legacy /api/admin/* routes on port 7003.
+  return requestApi<T>(`/api/netops2026/admin${path}`, options);
 }
 
 async function requestApi<T>(url: string, options: RequestInit = {}): Promise<T> {
