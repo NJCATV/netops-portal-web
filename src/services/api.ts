@@ -10,11 +10,13 @@ export function getToken() {
 }
 
 export function setToken(token: string) {
+  sessionStorage.removeItem("netops2026_boss_access");
   localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem("netops2026_boss_access");
 }
 
 function tokenScope() {
@@ -74,6 +76,14 @@ export function prewarmOperationsPages() {
     "radius:records:auth:default",
     sessionStorage,
   ).catch(() => undefined);
+}
+
+export function recordUsageEvent(type: "page_view", path: string, label = "") {
+  if (!getToken()) return Promise.resolve({ recorded: false });
+  return api<{ recorded: boolean }>("/usage/events", {
+    method: "POST",
+    body: JSON.stringify({ type, path, label }),
+  });
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

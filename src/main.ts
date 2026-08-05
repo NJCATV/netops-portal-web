@@ -17,6 +17,7 @@ import CmSearchPage from "./pages/CmSearchPage.vue";
 import CmtsDevicesPage from "./pages/CmtsDevicesPage.vue";
 import PlaceholderPage from "./pages/PlaceholderPage.vue";
 import SystemAuditPage from "./pages/SystemAuditPage.vue";
+import { recordUsageEvent } from "./services/api";
 import "./styles.css";
 
 const router = createRouter({
@@ -66,6 +67,11 @@ const router = createRouter({
     { path: "/system-audit", component: SystemAuditPage, meta: { title: "系统审计与使用分析", subtitle: "登录、功能调用与用户使用情况，仅超级管理员可见", admin: true } }
     ,{ path: "/infrastructure", component: () => import("./pages/InfrastructurePage.vue"), meta: { title: "基础设施监控", subtitle: "服务器资源、核心服务和数据组件健康状态，仅超级管理员可见", admin: true } }
   ]
+});
+
+router.afterEach(to => {
+  if (to.path === "/dashboard") return;
+  void recordUsageEvent("page_view", to.path, String(to.meta.title || "")).catch(() => undefined);
 });
 
 createApp(App).use(router).mount("#app");
