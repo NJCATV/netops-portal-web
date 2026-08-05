@@ -16,7 +16,7 @@ type AuditData = {
   page_size: number;
 };
 
-const filters = reactive({ hours: 168, module: "", result: "", keyword: "", user_id: "" });
+const filters = reactive({ hours: 168, module: "", result: "", user_keyword: "", keyword: "" });
 const data = ref<AuditData>({ overview: {}, trends: [], modules: [], features: [], users: [], items: [], total: 0, page: 1, page_size: 30 });
 const page = ref(1);
 const loading = ref(false);
@@ -58,8 +58,8 @@ function query(pageValue = page.value) {
   const params = new URLSearchParams({ hours: String(filters.hours), page: String(pageValue), page_size: "30" });
   if (filters.module) params.set("module", filters.module);
   if (filters.result) params.set("result", filters.result);
+  if (filters.user_keyword.trim()) params.set("user_keyword", filters.user_keyword.trim());
   if (filters.keyword.trim()) params.set("keyword", filters.keyword.trim());
-  if (filters.user_id) params.set("user_id", filters.user_id);
   return params.toString();
 }
 async function load(pageValue = 1) {
@@ -68,7 +68,7 @@ async function load(pageValue = 1) {
   catch (err) { error.value = err instanceof Error ? err.message : "系统审计数据加载失败"; }
   finally { loading.value = false; }
 }
-function reset() { filters.module = ""; filters.result = ""; filters.keyword = ""; filters.user_id = ""; void load(); }
+function reset() { filters.module = ""; filters.result = ""; filters.user_keyword = ""; filters.keyword = ""; void load(); }
 
 onMounted(() => { void load(); });
 </script>
@@ -84,8 +84,8 @@ onMounted(() => { void load(); });
       <label><span>查询范围</span><select v-model.number="filters.hours"><option :value="24">近 24 小时</option><option :value="168">近 7 天</option><option :value="720">近 30 天</option><option :value="2160">近 90 天</option></select></label>
       <label><span>功能模块</span><select v-model="filters.module"><option value="">全部模块</option><option v-for="item in data.modules" :key="item.module" :value="item.module">{{ moduleName(item.module) }}</option></select></label>
       <label><span>执行结果</span><select v-model="filters.result"><option value="">全部结果</option><option value="success">成功</option><option value="denied">拒绝</option><option value="failed">失败</option></select></label>
-      <label><span>用户</span><select v-model="filters.user_id"><option value="">全部用户</option><option v-for="item in data.users" :key="item.user_id" :value="String(item.user_id)">{{ item.display_name }}{{ item.username ? `（${item.username}）` : "" }}</option></select></label>
-      <label class="system-audit-search"><span>关键词</span><input v-model="filters.keyword" placeholder="账号、功能或路径" @keyup.enter="load()" /></label>
+      <label><span>用户搜索</span><input v-model="filters.user_keyword" placeholder="姓名、账号或用户 ID" @keyup.enter="load()" /></label>
+      <label class="system-audit-search"><span>功能关键词</span><input v-model="filters.keyword" placeholder="功能或请求路径" @keyup.enter="load()" /></label>
       <div class="system-audit-filter-actions"><button class="btn btn-primary" :disabled="loading" @click="load()">查询</button><button class="btn btn-secondary" :disabled="loading" @click="reset">重置</button></div>
     </section>
 
